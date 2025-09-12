@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Search, MessageCircle, Phone, Video, Plus } from 'lucide-react';
 import { ChatRoom } from './ChatRoom';
 import { UserSearch } from './UserSearch';
+import { MobileChatDashboard } from './MobileChatDashboard';
 import { toast } from '@/hooks/use-toast';
 
 interface Profile {
@@ -305,6 +306,13 @@ export const ChatDashboard = () => {
         currentUser={user!}
       />
     );
+  }
+
+  // Check if mobile view
+  const isMobile = window.innerWidth < 768;
+
+  if (isMobile) {
+    return <MobileChatDashboard />;
   }
 
   return (
