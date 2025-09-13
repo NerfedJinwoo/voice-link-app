@@ -7,6 +7,7 @@ import { ArrowLeft, Send, Phone, Video, MoreVertical, Paperclip } from 'lucide-r
 import { toast } from '@/hooks/use-toast';
 import { User } from '@supabase/supabase-js';
 import { FileUpload, FilePreview } from './FileUpload';
+import { WebRTCCall } from './WebRTCCall';
 
 interface Profile {
   id: string;
@@ -44,6 +45,11 @@ export const MobileChatRoom = ({ chatRoom, onBack, currentUser }: MobileChatRoom
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [activeCall, setActiveCall] = useState<{
+    chatRoomId: string;
+    callType: 'voice' | 'video';
+    participants: string[];
+  } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -248,52 +254,20 @@ export const MobileChatRoom = ({ chatRoom, onBack, currentUser }: MobileChatRoom
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const handleVoiceCall = async () => {
-    const otherUser = getOtherParticipant();
-    
-    try {
-      const { error } = await supabase
-        .from('messages')
-        .insert({
-          chat_room_id: chatRoom.id,
-          sender_id: currentUser.id,
-          content: 'Voice call started',
-          message_type: 'voice_call'
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: "Voice Call",
-        description: `Calling ${otherUser?.display_name || 'user'}...`,
-      });
-    } catch (error) {
-      console.error('Error starting call:', error);
-    }
+  const handleVoiceCall = () => {
+    setActiveCall({
+      chatRoomId: chatRoom.id,
+      callType: 'voice',
+      participants: chatRoom.participants.map(p => p.user_id)
+    });
   };
 
-  const handleVideoCall = async () => {
-    const otherUser = getOtherParticipant();
-    
-    try {
-      const { error } = await supabase
-        .from('messages')
-        .insert({
-          chat_room_id: chatRoom.id,
-          sender_id: currentUser.id,
-          content: 'Video call started',
-          message_type: 'video_call'
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: "Video Call",
-        description: `Video calling ${otherUser?.display_name || 'user'}...`,
-      });
-    } catch (error) {
-      console.error('Error starting call:', error);
-    }
+  const handleVideoCall = () => {
+    setActiveCall({
+      chatRoomId: chatRoom.id,
+      callType: 'video',
+      participants: chatRoom.participants.map(p => p.user_id)
+    });
   };
 
   if (loading) {
@@ -304,6 +278,18 @@ export const MobileChatRoom = ({ chatRoom, onBack, currentUser }: MobileChatRoom
           <p className="text-muted-foreground">Loading messages...</p>
         </div>
       </div>
+    );
+  }
+
+  // Show call interface if active call
+  if (activeCall) {
+    return (
+      <WebRTCCall
+        chatRoomId={activeCall.chatRoomId}
+        callType={activeCall.callType}
+        participants={activeCall.participants}
+        onEndCall={() => setActiveCall(null)}
+      />
     );
   }
 

@@ -19,6 +19,7 @@ import {
 import { MobileChatRoom } from './MobileChatRoom';
 import { UserSearch } from './UserSearch';
 import { ProfileEditor } from './ProfileEditor';
+import { FriendsManager } from './FriendsManager';
 import { toast } from '@/hooks/use-toast';
 
 interface Profile {
@@ -50,6 +51,7 @@ export const MobileChatDashboard = () => {
   const [selectedChatRoom, setSelectedChatRoom] = useState<ChatRoomData | null>(null);
   const [showUserSearch, setShowUserSearch] = useState(false);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
+  const [showFriendsManager, setShowFriendsManager] = useState(false);
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -358,6 +360,12 @@ export const MobileChatDashboard = () => {
     );
   }
 
+  if (showFriendsManager) {
+    return (
+      <FriendsManager onClose={() => setShowFriendsManager(false)} />
+    );
+  }
+
   if (selectedChatRoom) {
     return (
       <MobileChatRoom 
@@ -524,7 +532,7 @@ export const MobileChatDashboard = () => {
         <div className="flex">
           {[
             { key: 'chats', label: 'Chats', icon: MessageSquare },
-            { key: 'updates', label: 'Updates', icon: Users },
+            { key: 'updates', label: 'Friends', icon: Users, action: () => setShowFriendsManager(true) },
             { key: 'communities', label: 'Communities', icon: Users },
             { key: 'calls', label: 'Calls', icon: Phone }
           ].map((tab) => {
@@ -534,7 +542,7 @@ export const MobileChatDashboard = () => {
             return (
               <button
                 key={tab.key}
-                onClick={() => setBottomTab(tab.key as any)}
+                onClick={() => tab.action ? tab.action() : setBottomTab(tab.key as any)}
                 className={`flex-1 py-3 px-4 flex flex-col items-center gap-1 transition-colors ${
                   isActive 
                     ? 'text-primary' 

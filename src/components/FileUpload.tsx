@@ -2,21 +2,26 @@ import React, { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, File, Image, Video } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface FileUploadProps {
   onFileSelect: (file: File, type: 'image' | 'video' | 'document') => void;
+  onFileUploaded?: (url: string, type: 'image' | 'video' | 'document') => void;
   accept?: string;
   maxSize?: number; // in MB
 }
 
 export const FileUpload: React.FC<FileUploadProps> = ({ 
   onFileSelect, 
+  onFileUploaded,
   accept = "image/*,video/*,.pdf,.doc,.docx,.txt",
   maxSize = 50
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -38,11 +43,60 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       fileType = 'video';
     }
 
+    // Call the local callback first for immediate preview
     onFileSelect(file, fileType);
+
+    // Upload to Supabase Storage if user is authenticated
+    if (user && onFileUploaded) {
+      await uploadToStorage(file, fileType);
+    }
     
     // Reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+  };
+
+  const uploadToStorage = async (file: File, fileType: 'image' | 'video' | 'document') => {
+    if (!user) return;
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+
+    try {
+      const { data, error } = await supabase.storage
+        .from('chat-files')
+        .upload(fileName, file);
+
+      if (error) {
+        console.error('Upload error:', error);
+        toast({
+          title: "Upload failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('chat-files')
+        .getPublicUrl(fileName);
+
+      if (urlData.publicUrl && onFileUploaded) {
+        onFileUploaded(urlData.publicUrl, fileType);
+        toast({
+          title: "File uploaded",
+          description: "File uploaded successfully",
+        });
+      }
+    } catch (error) {
+      console.error('Storage upload error:', error);
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload file",
+        variant: "destructive",
+      });
     }
   };
 
