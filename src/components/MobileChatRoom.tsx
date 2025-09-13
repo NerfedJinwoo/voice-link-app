@@ -3,9 +3,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, Send, Phone, Video, MoreVertical } from 'lucide-react';
+import { ArrowLeft, Send, Phone, Video, MoreVertical, Paperclip } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { User } from '@supabase/supabase-js';
+import { FileUpload, FilePreview } from './FileUpload';
 
 interface Profile {
   id: string;
@@ -42,6 +43,7 @@ export const MobileChatRoom = ({ chatRoom, onBack, currentUser }: MobileChatRoom
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -183,21 +185,33 @@ export const MobileChatRoom = ({ chatRoom, onBack, currentUser }: MobileChatRoom
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() && !selectedFile) return;
 
     try {
+      let messageContent = newMessage.trim();
+      let messageType = 'text';
+
+      if (selectedFile) {
+        // For now, we'll just send the filename as content
+        // In a real app, you'd upload to storage first
+        messageContent = selectedFile.name;
+        messageType = selectedFile.type.startsWith('image/') ? 'image' : 
+                     selectedFile.type.startsWith('video/') ? 'video' : 'file';
+      }
+
       const { error } = await supabase
         .from('messages')
         .insert({
           chat_room_id: chatRoom.id,
           sender_id: currentUser.id,
-          content: newMessage.trim(),
-          message_type: 'text'
+          content: messageContent,
+          message_type: messageType
         });
 
       if (error) throw error;
 
       setNewMessage('');
+      setSelectedFile(null);
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
@@ -206,6 +220,14 @@ export const MobileChatRoom = ({ chatRoom, onBack, currentUser }: MobileChatRoom
         variant: "destructive",
       });
     }
+  };
+
+  const handleFileSelect = (file: File, type: 'image' | 'video' | 'document') => {
+    setSelectedFile(file);
+    toast({
+      title: "File selected",
+      description: `${file.name} ready to send`,
+    });
   };
 
   const getChatRoomDisplayName = () => {
@@ -226,20 +248,52 @@ export const MobileChatRoom = ({ chatRoom, onBack, currentUser }: MobileChatRoom
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const handleVoiceCall = () => {
+  const handleVoiceCall = async () => {
     const otherUser = getOtherParticipant();
-    toast({
-      title: "Voice Call",
-      description: `Calling ${otherUser?.display_name || 'user'}... (Feature coming soon)`,
-    });
+    
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          chat_room_id: chatRoom.id,
+          sender_id: currentUser.id,
+          content: 'Voice call started',
+          message_type: 'voice_call'
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Voice Call",
+        description: `Calling ${otherUser?.display_name || 'user'}...`,
+      });
+    } catch (error) {
+      console.error('Error starting call:', error);
+    }
   };
 
-  const handleVideoCall = () => {
+  const handleVideoCall = async () => {
     const otherUser = getOtherParticipant();
-    toast({
-      title: "Video Call",
-      description: `Video calling ${otherUser?.display_name || 'user'}... (Feature coming soon)`,
-    });
+    
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          chat_room_id: chatRoom.id,
+          sender_id: currentUser.id,
+          content: 'Video call started',
+          message_type: 'video_call'
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Video Call",
+        description: `Video calling ${otherUser?.display_name || 'user'}...`,
+      });
+    } catch (error) {
+      console.error('Error starting call:', error);
+    }
   };
 
   if (loading) {
@@ -336,7 +390,7 @@ export const MobileChatRoom = ({ chatRoom, onBack, currentUser }: MobileChatRoom
                 className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'} mb-1`}
               >
                 <div 
-                  className={`max-w-[80%] px-3 py-2 rounded-lg shadow-sm ${
+                  className={`max-w-[80%] px-3 py-2 rounded-lg shadow-sm animate-fade-in ${
                     isCurrentUser
                       ? 'bg-primary text-primary-foreground rounded-br-none'
                       : 'bg-card text-card-foreground rounded-bl-none'
@@ -347,7 +401,37 @@ export const MobileChatRoom = ({ chatRoom, onBack, currentUser }: MobileChatRoom
                       {message.sender.display_name}
                     </p>
                   )}
-                  <p className="text-sm leading-relaxed break-words">{message.content}</p>
+                  
+                  {message.message_type === 'voice_call' && (
+                    <div className="flex items-center gap-2">
+                      <Phone className="w-4 h-4" />
+                      <span className="text-sm">Voice call</span>
+                    </div>
+                  )}
+                  {message.message_type === 'video_call' && (
+                    <div className="flex items-center gap-2">
+                      <Video className="w-4 h-4" />
+                      <span className="text-sm">Video call</span>
+                    </div>
+                  )}
+                  {message.message_type === 'image' && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">📷 {message.content}</span>
+                    </div>
+                  )}
+                  {message.message_type === 'video' && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">🎥 {message.content}</span>
+                    </div>
+                  )}
+                  {message.message_type === 'file' && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">📄 {message.content}</span>
+                    </div>
+                  )}
+                  {message.message_type === 'text' && (
+                    <p className="text-sm leading-relaxed break-words">{message.content}</p>
+                  )}
                   <div className={`flex items-center justify-end gap-1 mt-1`}>
                     <span className={`text-xs ${
                       isCurrentUser ? 'text-primary-foreground/70' : 'text-muted-foreground'
@@ -368,7 +452,18 @@ export const MobileChatRoom = ({ chatRoom, onBack, currentUser }: MobileChatRoom
 
       {/* Message Input */}
       <div className="p-4 bg-card border-t">
+        {selectedFile && (
+          <div className="mb-3">
+            <FilePreview 
+              file={selectedFile} 
+              onRemove={() => setSelectedFile(null)} 
+            />
+          </div>
+        )}
+        
         <form onSubmit={sendMessage} className="flex gap-2 items-end">
+          <FileUpload onFileSelect={handleFileSelect} />
+          
           <div className="flex-1 bg-background rounded-full border border-border flex items-center px-4 py-2">
             <Input
               value={newMessage}
@@ -377,10 +472,11 @@ export const MobileChatRoom = ({ chatRoom, onBack, currentUser }: MobileChatRoom
               className="flex-1 border-0 bg-transparent focus:ring-0 focus:outline-none p-0"
             />
           </div>
+          
           <Button 
             type="submit" 
-            disabled={!newMessage.trim()}
-            className="rounded-full w-12 h-12 p-0 flex items-center justify-center"
+            disabled={!newMessage.trim() && !selectedFile}
+            className="rounded-full w-12 h-12 p-0 flex items-center justify-center hover:scale-110 transition-transform"
           >
             <Send className="w-5 h-5" />
           </Button>

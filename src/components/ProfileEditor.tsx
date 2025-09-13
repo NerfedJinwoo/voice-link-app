@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, Camera, Check } from 'lucide-react';
+import { ArrowLeft, Camera, Check, LogOut, Upload } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface Profile {
@@ -23,11 +23,36 @@ interface ProfileEditorProps {
 }
 
 export const ProfileEditor = ({ profile, onBack, onUpdate }: ProfileEditorProps) => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [displayName, setDisplayName] = useState(profile.display_name);
   const [username, setUsername] = useState(profile.username);
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url || '');
   const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImagePicker = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast({
+          title: "File too large",
+          description: "Please select an image smaller than 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setAvatarUrl(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSave = async () => {
     if (!user) return;
@@ -120,10 +145,18 @@ export const ProfileEditor = ({ profile, onBack, onUpdate }: ProfileEditorProps)
             <Button
               variant="secondary"
               size="sm"
-              className="absolute bottom-0 right-0 rounded-full h-10 w-10"
+              className="absolute bottom-0 right-0 rounded-full h-10 w-10 hover:scale-110 transition-transform"
+              onClick={handleImagePicker}
             >
               <Camera className="w-4 h-4" />
             </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              className="hidden"
+            />
           </div>
           <Input
             placeholder="Avatar URL (optional)"
@@ -162,15 +195,25 @@ export const ProfileEditor = ({ profile, onBack, onUpdate }: ProfileEditorProps)
           </div>
         </div>
 
-        {/* Save Button */}
-        <div className="max-w-md mx-auto">
+        {/* Action Buttons */}
+        <div className="max-w-md mx-auto space-y-3">
           <Button 
             onClick={handleSave}
             disabled={!canSave || saving}
-            className="w-full"
+            className="w-full hover:scale-105 transition-transform"
             size="lg"
           >
             {saving ? 'Saving...' : 'Save Changes'}
+          </Button>
+          
+          <Button 
+            onClick={signOut}
+            variant="destructive"
+            className="w-full hover:scale-105 transition-transform"
+            size="lg"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Sign Out
           </Button>
         </div>
       </div>

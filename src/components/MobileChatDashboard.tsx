@@ -370,22 +370,10 @@ export const MobileChatDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background dark">
-      {/* Status Bar Simulation */}
-      <div className="bg-background text-foreground px-4 py-1 text-sm flex justify-between items-center border-b border-border/50">
-        <span>11:40 AM</span>
-        <div className="flex items-center gap-1">
-          <span>📶</span>
-          <span>📶</span>
-          <span>📶</span>
-          <span>📶</span>
-          <span>🔋 44%</span>
-        </div>
-      </div>
-
       {/* Header */}
-      <div className="bg-primary text-primary-foreground p-4">
+      <div className="bg-primary text-primary-foreground p-4 animate-fade-in">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-semibold">WhatsApp</h1>
+          <h1 className="text-xl font-semibold">EchoVerse</h1>
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="sm" className="text-primary-foreground hover:bg-primary-foreground/20">
               <Camera className="w-5 h-5" />
@@ -465,7 +453,7 @@ export const MobileChatDashboard = () => {
               <div
                 key={room.id}
                 onClick={() => setSelectedChatRoom(room)}
-                className="px-4 py-3 border-b border-border/50 hover:bg-accent cursor-pointer transition-colors active:bg-accent/80"
+                className="px-4 py-3 border-b border-border/50 hover:bg-accent cursor-pointer transition-all duration-200 active:bg-accent/80 hover:scale-105 animate-fade-in"
               >
                 <div className="flex items-center gap-3">
                   <div className="relative">

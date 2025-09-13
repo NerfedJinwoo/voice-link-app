@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { ChatDashboard } from '@/components/ChatDashboard';
 import { useNotifications } from '@/hooks/useNotifications';
+import { registerServiceWorker } from '@/utils/serviceWorker';
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -19,6 +20,11 @@ const Index = () => {
       }
     }
   }, [user, loading, navigate, requestNotificationPermission]);
+
+  useEffect(() => {
+    // Register service worker for persistent notifications
+    registerServiceWorker();
+  }, []);
 
   if (loading) {
     return (

@@ -49,18 +49,19 @@ export const useNotifications = () => {
 
           if (!senderProfile) return;
 
-          // Show browser notification if permission granted and page is not visible
+          // Show browser notification if permission granted
           if (
             'Notification' in window &&
-            Notification.permission === 'granted' &&
-            document.hidden
+            Notification.permission === 'granted'
           ) {
-          new Notification(`New message from ${senderProfile.display_name}`, {
-            body: messageData.content,
-            icon: senderProfile.avatar_url || '/placeholder.svg',
-            badge: '/placeholder.svg',
-            tag: `chat-${messageData.chat_room_id}`,
-          });
+            new Notification(`New message from ${senderProfile.display_name}`, {
+              body: messageData.content,
+              icon: senderProfile.avatar_url || '/placeholder.svg',
+              badge: '/placeholder.svg',
+              tag: `chat-${messageData.chat_room_id}`,
+              requireInteraction: true,
+              silent: false,
+            });
           }
 
           // Show toast notification if page is visible
