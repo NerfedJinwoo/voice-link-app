@@ -55,6 +55,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       <Button
         variant="ghost"
         size="sm"
+        type="button"
         onClick={openFilePicker}
         className="hover:scale-110 transition-transform"
       >
