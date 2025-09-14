@@ -1,9 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { ChatDashboard } from '@/components/ChatDashboard';
 import { useNotifications } from '@/hooks/useNotifications';
 import { registerServiceWorker, setupPushNotifications } from '@/utils/serviceWorker';
+import { useIncomingCalls } from '@/hooks/useIncomingCalls';
+import IncomingCallOverlay from '@/components/IncomingCallOverlay';
+import { WebRTCCall } from '@/components/WebRTCCall';
 
 const Index = () => {
   const { user, loading } = useAuth();
