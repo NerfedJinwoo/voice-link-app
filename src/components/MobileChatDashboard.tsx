@@ -20,6 +20,7 @@ import { MobileChatRoom } from './MobileChatRoom';
 import { UserSearch } from './UserSearch';
 import { ProfileEditor } from './ProfileEditor';
 import { FriendsManager } from './FriendsManager';
+import GroupCreator from './GroupCreator';
 import { toast } from '@/hooks/use-toast';
 
 interface Profile {
@@ -53,6 +54,7 @@ export const MobileChatDashboard = () => {
   const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [showFriendsManager, setShowFriendsManager] = useState(false);
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
+  const [showGroupCreator, setShowGroupCreator] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'unread' | 'favourites' | 'groups'>('all');
@@ -362,8 +364,12 @@ export const MobileChatDashboard = () => {
 
   if (showFriendsManager) {
     return (
-      <FriendsManager onClose={() => setShowFriendsManager(false)} />
+       <FriendsManager onClose={() => setShowFriendsManager(false)} />
     );
+  }
+
+  if (showGroupCreator) {
+    return <GroupCreator onClose={() => setShowGroupCreator(false)} onCreated={() => fetchChatRooms()} />
   }
 
   if (selectedChatRoom) {
@@ -400,12 +406,12 @@ export const MobileChatDashboard = () => {
         {/* Search Bar */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-          <Input
-            placeholder="Ask Meta AI or Search"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 bg-background/10 border-0 text-primary-foreground placeholder:text-primary-foreground/70"
-          />
+           <Input
+             placeholder="Search"
+             value={searchTerm}
+             onChange={(e) => setSearchTerm(e.target.value)}
+             className="pl-10 bg-background/10 border-0 text-primary-foreground placeholder:text-primary-foreground/70"
+           />
         </div>
       </div>
 

@@ -8,6 +8,7 @@ import { toast } from '@/hooks/use-toast';
 import { User } from '@supabase/supabase-js';
 import { FileUpload, FilePreview } from './FileUpload';
 import { WebRTCCall } from './WebRTCCall';
+import { sendCallInvite } from '@/utils/callSignaling';
 
 interface Profile {
   id: string;
@@ -254,20 +255,28 @@ export const MobileChatRoom = ({ chatRoom, onBack, currentUser }: MobileChatRoom
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const handleVoiceCall = () => {
-    setActiveCall({
+  const handleVoiceCall = async () => {
+    const participants = chatRoom.participants.map(p => p.user_id);
+    const recipients = participants.filter(id => id !== currentUser.id);
+    await sendCallInvite(recipients, {
       chatRoomId: chatRoom.id,
       callType: 'voice',
-      participants: chatRoom.participants.map(p => p.user_id)
+      from: currentUser.id,
+      participants
     });
+    setActiveCall({ chatRoomId: chatRoom.id, callType: 'voice', participants });
   };
 
-  const handleVideoCall = () => {
-    setActiveCall({
+  const handleVideoCall = async () => {
+    const participants = chatRoom.participants.map(p => p.user_id);
+    const recipients = participants.filter(id => id !== currentUser.id);
+    await sendCallInvite(recipients, {
       chatRoomId: chatRoom.id,
       callType: 'video',
-      participants: chatRoom.participants.map(p => p.user_id)
+      from: currentUser.id,
+      participants
     });
+    setActiveCall({ chatRoomId: chatRoom.id, callType: 'video', participants });
   };
 
   if (loading) {

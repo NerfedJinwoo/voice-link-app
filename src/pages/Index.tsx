@@ -3,12 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { ChatDashboard } from '@/components/ChatDashboard';
 import { useNotifications } from '@/hooks/useNotifications';
-import { registerServiceWorker } from '@/utils/serviceWorker';
+import { registerServiceWorker, setupPushNotifications } from '@/utils/serviceWorker';
 
 const Index = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { requestNotificationPermission } = useNotifications();
+  const { incomingCall, clearIncomingCall } = useIncomingCalls();
+  const [activeCall, setActiveCall] = useState<null | {
+    chatRoomId: string;
+    callType: 'voice' | 'video';
+    participants: string[];
+  }>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -26,6 +32,13 @@ const Index = () => {
     registerServiceWorker();
   }, []);
 
+  useEffect(() => {
+    // Ensure push subscription is created when permission is granted
+    if (user && 'Notification' in window && Notification.permission === 'granted') {
+      setupPushNotifications();
+    }
+  }, [user]);
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -41,7 +54,42 @@ const Index = () => {
     return null; // Will redirect to auth
   }
 
-  return <ChatDashboard />;
+  const acceptIncoming = () => {
+    if (!incomingCall) return;
+    setActiveCall({
+      chatRoomId: incomingCall.chatRoomId,
+      callType: incomingCall.callType,
+      participants: incomingCall.participants,
+    });
+    clearIncomingCall();
+  };
+
+  const declineIncoming = () => {
+    clearIncomingCall();
+  };
+
+  return (
+    <>
+      <ChatDashboard />
+      {incomingCall && !activeCall && (
+        <IncomingCallOverlay
+          callerName={''}
+          callType={incomingCall.callType}
+          onAccept={acceptIncoming}
+          onDecline={declineIncoming}
+        />
+      )}
+      {activeCall && (
+        <WebRTCCall
+          chatRoomId={activeCall.chatRoomId}
+          isIncoming
+          callType={activeCall.callType}
+          participants={activeCall.participants}
+          onEndCall={() => setActiveCall(null)}
+        />
+      )}
+    </>
+  );
 };
 
 export default Index;

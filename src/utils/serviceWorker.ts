@@ -1,3 +1,4 @@
+import { supabase } from '@/integrations/supabase/client';
 // Service Worker for persistent notifications
 export const registerServiceWorker = async () => {
   if ('serviceWorker' in navigator) {
@@ -19,20 +20,50 @@ export const setupPushNotifications = async () => {
 
   try {
     const registration = await navigator.serviceWorker.ready;
-    
+
     // Check if already subscribed
     const existingSubscription = await registration.pushManager.getSubscription();
     if (existingSubscription) {
       return existingSubscription;
     }
 
+    // Get public VAPID key from Edge Function
+    const { data: vapidData, error: vapidError } = await supabase.functions.invoke('get-vapid-public-key');
+    if (vapidError || !vapidData?.publicKey) {
+      console.error('Failed to retrieve VAPID public key', vapidError);
+      return;
+    }
+
     // Subscribe to push notifications
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlB64ToUint8Array(process.env.VAPID_PUBLIC_KEY || '')
+      applicationServerKey: urlB64ToUint8Array(vapidData.publicKey)
     });
 
     console.log('Push subscription successful:', subscription);
+
+    // Persist subscription in database with RLS
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData?.user?.id;
+      if (!userId) return subscription;
+
+      const json = subscription.toJSON() as any;
+      const keys = json.keys || {};
+
+      await (supabase as any).from('push_subscriptions').upsert(
+        {
+          user_id: userId,
+          endpoint: json.endpoint,
+          p256dh: keys.p256dh,
+          auth: keys.auth,
+        },
+        { onConflict: 'endpoint' }
+      );
+    } catch (e) {
+      console.error('Failed to save push subscription:', e);
+    }
+
     return subscription;
   } catch (error) {
     console.error('Failed to subscribe to push notifications:', error);
