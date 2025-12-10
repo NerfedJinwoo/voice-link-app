@@ -14,6 +14,11 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
+      - name: Set up Node.js (required for Capacitor)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -30,4 +35,3 @@ jobs:
         with:
           name: app-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
-          
