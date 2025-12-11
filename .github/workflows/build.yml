@@ -14,29 +14,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Set up Node.js (Capacitor requires Node 22+)
         uses: actions/setup-node@v4
         with:
           node-version: "22"
 
-      - name: Install project dependencies
-        working-directory: .
+      - name: Install NPM dependencies
         run: npm install
 
       - name: Build Vite project
-        working-directory: .
         run: npm run build
 
       - name: Install Capacitor CLI
-        working-directory: .
         run: npm install @capacitor/cli@latest --save-dev
 
-      - name: Add Android platform (if missing)
-        working-directory: .
-        run: npx cap add android || echo "Android folder already exists"
+      - name: Add Android platform if missing
+        run: npx cap add android || echo "Android already added"
 
       - name: Sync Capacitor
-        working-directory: .
         run: npx cap sync android
 
       - name: Set up Java
@@ -48,12 +43,12 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Build Android APK (unsigned)
+      - name: Build Android APK (debug / unsigned)
         working-directory: ./android
         run: ./gradlew assembleDebug
 
-      - name: Upload APK artifact
+      - name: Upload built APK
         uses: actions/upload-artifact@v4
         with:
           name: unsigned-debug-apk
-          path: voice-link-app-main/android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
