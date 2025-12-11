@@ -34,6 +34,10 @@ jobs:
       - name: Build web app
         run: npm run build
 
+      # ✅ REQUIRED FIX — this copies dist/ into android/app/src/main/assets
+      - name: Copy web assets
+        run: npx cap copy
+
       - name: Sync Capacitor
         run: npx cap sync android
 
