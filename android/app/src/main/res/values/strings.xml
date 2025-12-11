@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">voice-link-app</string>
+    <string name="title_activity_main">voice-link-app</string>
+    <string name="package_name">app.lovable.7ef990277cb54aa4b3b0d2e2cbbba45e</string>
+    <string name="custom_url_scheme">app.lovable.7ef990277cb54aa4b3b0d2e2cbbba45e</string>
+</resources>
