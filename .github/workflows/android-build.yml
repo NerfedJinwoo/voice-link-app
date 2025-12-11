@@ -45,10 +45,18 @@ jobs:
         working-directory: android
         run: |
           mkdir -p gradle/wrapper
-          curl -sL https://services.gradle.org/distributions/gradle-8.2.1-bin.zip -o gradle.zip
-          unzip -q gradle.zip
-          ./gradle-8.2.1/bin/gradle wrapper --gradle-version 8.2.1
-          rm -rf gradle.zip gradle-8.2.1
+          # Download gradle-wrapper.jar directly
+          curl -sL https://raw.githubusercontent.com/gradle/gradle/v8.2.1/gradle/wrapper/gradle-wrapper.jar -o gradle/wrapper/gradle-wrapper.jar
+          # Create wrapper properties
+          cat > gradle/wrapper/gradle-wrapper.properties << 'EOF'
+          distributionBase=GRADLE_USER_HOME
+          distributionPath=wrapper/dists
+          distributionUrl=https\://services.gradle.org/distributions/gradle-8.2.1-bin.zip
+          zipStoreBase=GRADLE_USER_HOME
+          zipStorePath=wrapper/dists
+          EOF
+          # Create gradlew script
+          curl -sL https://raw.githubusercontent.com/gradle/gradle/v8.2.1/gradlew -o gradlew
           chmod +x gradlew
 
       - name: Build APK
