@@ -1,53 +1,59 @@
 name: Build Capacitor Android APK
 
-on: push: branches: [main] pull_request: branches: [main]
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
-jobs: build-android: runs-on: ubuntu-latest
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
 
-steps:
-  - name: Checkout repository
-    uses: actions/checkout@v4
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-  - name: Set up Node.js
-    uses: actions/setup-node@v4
-    with:
-      node-version: "20"
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
-  - name: Install project dependencies
-    working-directory: ./voice-link-app-main
-    run: npm install
+      - name: Install project dependencies
+        working-directory: ./voice-link-app-main
+        run: npm install
 
-  - name: Build Vite project
-    working-directory: ./voice-link-app-main
-    run: npm run build
+      - name: Build Vite project
+        working-directory: ./voice-link-app-main
+        run: npm run build
 
-  - name: Install Capacitor CLI
-    working-directory: ./voice-link-app-main
-    run: npm install @capacitor/cli@latest --save-dev
+      - name: Install Capacitor CLI
+        working-directory: ./voice-link-app-main
+        run: npm install @capacitor/cli@latest --save-dev
 
-  - name: Add Android platform (if missing)
-    working-directory: ./voice-link-app-main
-    run: npx cap add android || echo "Android folder already exists"
+      - name: Add Android platform (if missing)
+        working-directory: ./voice-link-app-main
+        run: npx cap add android || echo "Android folder already exists"
 
-  - name: Sync Capacitor
-    working-directory: ./voice-link-app-main
-    run: npx cap sync android
+      - name: Sync Capacitor
+        working-directory: ./voice-link-app-main
+        run: npx cap sync android
 
-  - name: Set up Java (required for Android build)
-    uses: actions/setup-java@v4
-    with:
-      distribution: "temurin"
-      java-version: "17"
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
 
-  - name: Set up Android SDK
-    uses: android-actions/setup-android@v3
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
 
-  - name: Build Android APK (unsigned)
-    working-directory: ./voice-link-app-main/android
-    run: ./gradlew assembleDebug
+      - name: Build Android APK (unsigned)
+        working-directory: ./voice-link-app-main/android
+        run: ./gradlew assembleDebug
 
-  - name: Upload APK artifact
-    uses: actions/upload-artifact@v4
-    with:
-      name: unsigned-debug-apk
-      path: voice-link-app-main/android/app/build/outputs/apk/debug/app-debug.apk
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-debug-apk
+          path: voice-link-app-main/android/app/build/outputs/apk/debug/app-debug.apk
