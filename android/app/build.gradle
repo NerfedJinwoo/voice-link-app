@@ -2,12 +2,12 @@ apply plugin: 'com.android.application'
 
 android {
     namespace "app.lovable.a7ef990277cb54aa4b3b0d2e2cbbba45e"
-    compileSdk 34
+    compileSdk 35
     
     defaultConfig {
         applicationId "app.lovable.7ef990277cb54aa4b3b0d2e2cbbba45e"
         minSdkVersion 22
-        targetSdkVersion 34
+        targetSdkVersion 35
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
