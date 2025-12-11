@@ -34,11 +34,11 @@ jobs:
       - name: Build web app
         run: npm run build
 
-      - name: Add Android platform
-        run: npx cap add android || true
-
-      - name: Sync Capacitor
-        run: npx cap sync android
+      - name: Initialize Capacitor Android
+        run: |
+          npm install @capacitor/cli @capacitor/core @capacitor/android --save-dev
+          npx cap add android --packageId app.lovable.7ef990277cb54aa4b3b0d2e2cbbba45e || echo "Android already exists"
+          npx cap sync android
 
       - name: Make gradlew executable
         run: chmod +x android/gradlew
