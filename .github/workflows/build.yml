@@ -1,6 +1,6 @@
 name: Build Capacitor Android APK
 
-on: push: branches: [ main ] pull_request: branches: [ main ]
+on: push: branches: [main] pull_request: branches: [main]
 
 jobs: build-android: runs-on: ubuntu-latest
 
