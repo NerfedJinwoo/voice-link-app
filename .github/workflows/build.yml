@@ -20,23 +20,23 @@ jobs:
           node-version: "20"
 
       - name: Install project dependencies
-        working-directory: ./voice-link-app-main
+        working-directory: .
         run: npm install
 
       - name: Build Vite project
-        working-directory: ./voice-link-app-main
+        working-directory: .
         run: npm run build
 
       - name: Install Capacitor CLI
-        working-directory: ./voice-link-app-main
+        working-directory: .
         run: npm install @capacitor/cli@latest --save-dev
 
       - name: Add Android platform (if missing)
-        working-directory: ./voice-link-app-main
+        working-directory: .
         run: npx cap add android || echo "Android folder already exists"
 
       - name: Sync Capacitor
-        working-directory: ./voice-link-app-main
+        working-directory: .
         run: npx cap sync android
 
       - name: Set up Java
@@ -49,7 +49,7 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Build Android APK (unsigned)
-        working-directory: ./voice-link-app-main/android
+        working-directory: ./android
         run: ./gradlew assembleDebug
 
       - name: Upload APK artifact
