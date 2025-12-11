@@ -240,14 +240,8 @@ export type Database = {
         Args: { user1_id: string; user2_id: string }
         Returns: boolean
       }
-      is_room_created_by: {
-        Args: { room_id: string }
-        Returns: boolean
-      }
-      is_user_in_chat: {
-        Args: { room_id: string }
-        Returns: boolean
-      }
+      is_room_created_by: { Args: { room_id: string }; Returns: boolean }
+      is_user_in_chat: { Args: { room_id: string }; Returns: boolean }
       update_user_status: {
         Args: { online_status: boolean; user_uuid: string }
         Returns: undefined
