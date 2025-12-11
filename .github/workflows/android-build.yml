@@ -41,8 +41,15 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Make gradlew executable
-        run: chmod +x android/gradlew
+      - name: Setup Gradle Wrapper
+        working-directory: android
+        run: |
+          mkdir -p gradle/wrapper
+          curl -sL https://services.gradle.org/distributions/gradle-8.2.1-bin.zip -o gradle.zip
+          unzip -q gradle.zip
+          ./gradle-8.2.1/bin/gradle wrapper --gradle-version 8.2.1
+          rm -rf gradle.zip gradle-8.2.1
+          chmod +x gradlew
 
       - name: Build APK
         working-directory: android
