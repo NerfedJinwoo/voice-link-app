@@ -34,7 +34,7 @@ jobs:
       - name: Build web app
         run: npm run build
 
-      # android/app/src/main/assets
+      # aroid/app/src/main/assets
       - name: Copy web assets
         run: npx cap copy
 
