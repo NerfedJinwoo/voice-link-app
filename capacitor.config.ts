@@ -1,7 +1,7 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.7ef990277cb54aa4b3b0d2e2cbbba45e',
+  appId: 'app.lovable.a7ef990277cb54aa4b3b0d2e2cbbba45e',
   appName: 'voice-link-app',
   webDir: 'dist',
   server: {
