@@ -2,15 +2,14 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Search, MessageCircle, Phone, Video, Plus } from 'lucide-react';
+import { MessageCircle, Plus } from 'lucide-react';
 import { ChatRoom } from './ChatRoom';
 import { UserSearch } from './UserSearch';
 import { MobileChatDashboard } from './MobileChatDashboard';
 import { toast } from '@/hooks/use-toast';
+import { cache, CACHE_KEYS } from '@/utils/cache';
 
 interface Profile {
   id: string;
@@ -44,6 +43,17 @@ export const ChatDashboard = () => {
 
   useEffect(() => {
     if (user) {
+      // Load cached data immediately for faster initial render
+      const cachedProfile = cache.get<Profile>(cache.userKey(user.id, CACHE_KEYS.PROFILE));
+      const cachedRooms = cache.get<ChatRoomData[]>(cache.userKey(user.id, CACHE_KEYS.CHAT_ROOMS));
+      
+      if (cachedProfile) setUserProfile(cachedProfile);
+      if (cachedRooms) {
+        setChatRooms(cachedRooms);
+        setLoading(false);
+      }
+      
+      // Fetch fresh data in background
       fetchUserProfile();
       fetchChatRooms();
     }
@@ -62,6 +72,8 @@ export const ChatDashboard = () => {
       console.error('Error fetching profile:', error);
     } else {
       setUserProfile(data);
+      // Cache profile for 60 minutes
+      cache.set(cache.userKey(user.id, CACHE_KEYS.PROFILE), data, 60);
     }
   };
 
@@ -172,6 +184,10 @@ export const ChatDashboard = () => {
       }));
 
       setChatRooms(rooms);
+      // Cache chat rooms for 15 minutes
+      if (user) {
+        cache.set(cache.userKey(user.id, CACHE_KEYS.CHAT_ROOMS), rooms, 15);
+      }
     } catch (error) {
       console.error('Error fetching chat rooms:', error);
       toast({
