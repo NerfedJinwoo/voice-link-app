@@ -4,9 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Send, Phone, Video, Mic, MicOff } from 'lucide-react';
+import { ArrowLeft, Send, Phone, Video, WifiOff } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { User } from '@supabase/supabase-js';
+import { cache, CACHE_KEYS } from '@/utils/cache';
+import { offlineQueue } from '@/utils/offlineQueue';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
 interface Profile {
   id: string;
@@ -43,21 +46,62 @@ export const ChatRoom = ({ chatRoom, onBack, currentUser }: ChatRoomProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
-  const [isRecording, setIsRecording] = useState(false);
+  const [pendingMessages, setPendingMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isOnline = useOnlineStatus();
 
   useEffect(() => {
+    // Load cached messages first for instant display
+    const cachedMessages = cache.get<Message[]>(`${CACHE_KEYS.MESSAGES}_${chatRoom.id}`);
+    if (cachedMessages) {
+      setMessages(cachedMessages);
+      setLoading(false);
+    }
+
     fetchMessages();
-    subscribeToMessages();
     
-    // Mark user as online when entering chat
-    updateUserStatus(true);
+    if (isOnline) {
+      subscribeToMessages();
+      updateUserStatus(true);
+      // Process any pending messages from offline queue
+      processOfflineQueue();
+    }
 
     return () => {
-      // Cleanup subscription and mark user as offline when leaving
-      updateUserStatus(false);
+      if (isOnline) {
+        updateUserStatus(false);
+      }
     };
-  }, [chatRoom.id]);
+  }, [chatRoom.id, isOnline]);
+
+  const processOfflineQueue = async () => {
+    const queue = offlineQueue.getQueue();
+    const messagesForThisRoom = queue.filter(
+      action => action.type === 'message' && action.payload.chat_room_id === chatRoom.id
+    );
+
+    for (const action of messagesForThisRoom) {
+      try {
+        const { error } = await supabase
+          .from('messages')
+          .insert({
+            chat_room_id: action.payload.chat_room_id,
+            sender_id: action.payload.sender_id,
+            content: action.payload.content,
+            message_type: 'text'
+          });
+
+        if (!error) {
+          offlineQueue.removeFromQueue(action.id);
+        }
+      } catch (e) {
+        console.error('Failed to sync offline message:', e);
+      }
+    }
+    
+    // Clear pending messages UI after sync
+    setPendingMessages([]);
+  };
 
   useEffect(() => {
     scrollToBottom();
@@ -118,13 +162,18 @@ export const ChatRoom = ({ chatRoom, onBack, currentUser }: ChatRoomProps) => {
       }));
 
       setMessages(formattedMessages);
+      // Cache messages for 30 minutes
+      cache.set(`${CACHE_KEYS.MESSAGES}_${chatRoom.id}`, formattedMessages, 30);
     } catch (error) {
       console.error('Error fetching messages:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load messages",
-        variant: "destructive",
-      });
+      // Don't show error toast if offline and we have cached data
+      if (isOnline) {
+        toast({
+          title: "Error",
+          description: "Failed to load messages",
+          variant: "destructive",
+        });
+      }
     }
     setLoading(false);
   };
@@ -195,24 +244,69 @@ export const ChatRoom = ({ chatRoom, onBack, currentUser }: ChatRoomProps) => {
     
     if (!newMessage.trim()) return;
 
+    const messageContent = newMessage.trim();
+    setNewMessage('');
+
+    // Create optimistic message for immediate UI feedback
+    const optimisticMessage: Message = {
+      id: `pending_${Date.now()}`,
+      content: messageContent,
+      created_at: new Date().toISOString(),
+      sender_id: currentUser.id,
+      message_type: 'text',
+      sender: {
+        id: '',
+        user_id: currentUser.id,
+        username: 'me',
+        display_name: 'Me',
+        is_online: true
+      }
+    };
+
+    if (!isOnline) {
+      // Queue message for later and show as pending
+      offlineQueue.addToQueue({
+        type: 'message',
+        payload: {
+          chat_room_id: chatRoom.id,
+          sender_id: currentUser.id,
+          content: messageContent
+        }
+      });
+      setPendingMessages(prev => [...prev, optimisticMessage]);
+      toast({
+        title: "Message queued",
+        description: "Will be sent when back online",
+      });
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('messages')
         .insert({
           chat_room_id: chatRoom.id,
           sender_id: currentUser.id,
-          content: newMessage.trim(),
+          content: messageContent,
           message_type: 'text'
         });
 
       if (error) throw error;
-
-      setNewMessage('');
     } catch (error) {
       console.error('Error sending message:', error);
+      // Queue failed message for retry
+      offlineQueue.addToQueue({
+        type: 'message',
+        payload: {
+          chat_room_id: chatRoom.id,
+          sender_id: currentUser.id,
+          content: messageContent
+        }
+      });
+      setPendingMessages(prev => [...prev, optimisticMessage]);
       toast({
-        title: "Error",
-        description: "Failed to send message",
+        title: "Message queued",
+        description: "Will retry when connection improves",
         variant: "destructive",
       });
     }
@@ -304,49 +398,64 @@ export const ChatRoom = ({ chatRoom, onBack, currentUser }: ChatRoomProps) => {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.length === 0 ? (
+        {messages.length === 0 && pendingMessages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <p className="text-muted-foreground">No messages yet. Start the conversation!</p>
           </div>
         ) : (
-          messages.map((message) => {
-            const isCurrentUser = message.sender_id === currentUser.id;
-            return (
-              <div
-                key={message.id}
-                className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
-              >
-                <div className={`flex gap-2 max-w-xs lg:max-w-md ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
-                  {!isCurrentUser && (
-                    <Avatar className="w-8 h-8">
-                      <AvatarFallback className="text-xs">
-                        {message.sender.display_name[0]?.toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
-                  <div
-                    className={`px-3 py-2 rounded-lg ${
-                      isCurrentUser
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted'
-                    }`}
-                  >
-                    {!isCurrentUser && !chatRoom.is_group && (
-                      <p className="text-xs font-medium mb-1">
-                        {message.sender.display_name}
-                      </p>
+          <>
+            {messages.map((message) => {
+              const isCurrentUser = message.sender_id === currentUser.id;
+              return (
+                <div
+                  key={message.id}
+                  className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div className={`flex gap-2 max-w-xs lg:max-w-md ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
+                    {!isCurrentUser && (
+                      <Avatar className="w-8 h-8">
+                        <AvatarFallback className="text-xs">
+                          {message.sender.display_name[0]?.toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
                     )}
+                    <div
+                      className={`px-3 py-2 rounded-lg ${
+                        isCurrentUser
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted'
+                      }`}
+                    >
+                      {!isCurrentUser && !chatRoom.is_group && (
+                        <p className="text-xs font-medium mb-1">
+                          {message.sender.display_name}
+                        </p>
+                      )}
+                      <p className="text-sm">{message.content}</p>
+                      <p className={`text-xs mt-1 ${
+                        isCurrentUser ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                      }`}>
+                        {formatMessageTime(message.created_at)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {/* Pending messages (offline queue) */}
+            {pendingMessages.map((message) => (
+              <div key={message.id} className="flex justify-end">
+                <div className="flex gap-2 max-w-xs lg:max-w-md flex-row-reverse">
+                  <div className="px-3 py-2 rounded-lg bg-primary/50 text-primary-foreground">
                     <p className="text-sm">{message.content}</p>
-                    <p className={`text-xs mt-1 ${
-                      isCurrentUser ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                    }`}>
-                      {formatMessageTime(message.created_at)}
+                    <p className="text-xs mt-1 text-primary-foreground/70 flex items-center gap-1">
+                      <WifiOff className="w-3 h-3" /> Pending...
                     </p>
                   </div>
                 </div>
               </div>
-            );
-          })
+            ))}
+          </>
         )}
         <div ref={messagesEndRef} />
       </div>
